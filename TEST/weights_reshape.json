@@ -1,0 +1,21 @@
+{
+    "packets": [
+        {
+            "interface": "axis_net",
+            "width": 32,
+            "type": "flit",
+            "payload": [
+                {
+                    "data": 1090519040,
+                    "last": 15,
+                    "keep": 255
+                },
+                {
+                    "data": 1065353216,
+                    "last": 15,
+                    "keep": 255
+                }
+            ]
+        }
+    ]
+}
