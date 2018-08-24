@@ -88,7 +88,7 @@ int main()
     // example: dma_in at offset 0x80000100, prepare to dma_in (input_size_bytes) bytes as input image
     // example: dma_out at offset 0x00f00000, prepare to dma_out (output_size_bytes) bytes as output feature map
 	// NOTE: ADRESS HERE NEEDS TO BE CONSISTENT WITH THE COMMAND ADDRESS FIELD
-    float transaction_3[4] = {0x80000100, (float)input_size_bytes, 0x00f00000, output_size_bytes};
+    float transaction_3[4] = {(float)0x80000100, (float)input_size_bytes, (float)0x00f00000, output_size_bytes};
     // assert(binary_content_check(filelen, input_buffer) == 0);
 
 
@@ -97,7 +97,7 @@ int main()
     // first  32 bits: offset in mem to dma_in
     // second  32 bits: size (bytes) in mem to dma_in
     // example: dma_in at offset 0x800C0000, prepare to dma_in (weights_size_bytes) bytes
-    float transaction_1[2] = {0x800C0000, (float)weights_size_bytes}; // {size to dma in, offset}
+    float transaction_1[2] = {(float)0x800C0000, (float)weights_size_bytes}; // {size to dma in, offset}
 
 
 
@@ -123,25 +123,28 @@ int main()
     rewind(fileptr);                          // Jump back to the beginning of the file
 
 	// add 16 bytes to store the extra 3 float
-    int command_size_bytes = (filelen + 12) * sizeof(unsigned char);
+    int command_size_bytes = (filelen + 8) * sizeof(unsigned char);
     command_buffer = (unsigned char *)malloc(command_size_bytes); // Enough memory for file + \0
     fread(command_buffer+4, filelen, 1, fileptr);           // Read in the entire file
     fclose(fileptr);                                      // Close the file
 
-	// assign number_commands at the start, batch_size and num_ranks at the end
+	// assign number_commands at the start
 	for (int iter = 0; iter < 4; iter++) {
 		command_buffer[iter] = number_commands_byte[iter];
-		command_buffer[132 + iter] = batch_size_byte[iter];
-		command_buffer[136 + iter] = num_ranks_byte[iter];
 	}
     //assert(binary_content_check(filelen + 12, command_buffer) == 0);
+	
+
+    //prepare 5th commands, batch_size and num_ranks
+    float transaction_5[2] = {(float)1.0, (float)1.0};
 
     // Transaction begins
     while (!MPI_Send(transaction_1, 2, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
 	// DMA in weights
     while (!MPI_Send(weights_buffer, weights_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
     while (!MPI_Send(transaction_3, input_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
-    while (!MPI_Send(command_buffer, 35, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+    while (!MPI_Send(command_buffer, 33, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+	while (!MPI_Send(transaction_5, 2, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
 	// Accumulated cycle count from rank 0 is 0
 	while (!MPI_Send((float)0, 1, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
 	// DMA in input feature map
