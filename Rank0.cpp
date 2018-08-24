@@ -41,10 +41,8 @@ int main()
     static int target_rank = 1;
     float number_commands = 1;
 	unsigned char number_commands_byte[4] =  {0, 0, 0, 1 };
-    float batch_size = 1;
-	unsigned char batch_size_byte[4] = { 0, 0, 0, 1 };
-    float num_ranks = 1;
-	unsigned char num_ranks_byte[4] = { 0, 0, 0, 1 };
+    float batch_size = 1.0;
+    float num_ranks = 1.0;
 
 
 
@@ -136,7 +134,7 @@ int main()
 	
 
     //prepare 5th commands, batch_size and num_ranks
-    float transaction_5[2] = {(float)1.0, (float)1.0};
+    float transaction_5[2] = {batch_size, num_ranks};
 
     // Transaction begins
     while (!MPI_Send(transaction_1, 2, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
