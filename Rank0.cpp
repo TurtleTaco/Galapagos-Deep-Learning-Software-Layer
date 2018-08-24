@@ -36,11 +36,11 @@ int binary_content_check(int filelen, unsigned char * buffer){
 
 int main()
 {
-    float output_size_bytes = 255;			// NEEDS TO BE UPDATED
-	int final_output_size_bytes = 255;		// NEED TO BE MODIFIED
+    float output_size_bytes = 255;		// NEEDS TO BE UPDATED
+    int final_output_size_bytes = 255;		// NEED TO BE MODIFIED
     static int target_rank = 1;
     float number_commands = 1;
-	unsigned char number_commands_byte[4] =  {0, 0, 0, 1 };
+    unsigned char number_commands_byte[4] =  {0, 0, 0, 1 };
     float batch_size = 1.0;
     float num_ranks = 1.0;
 
@@ -59,8 +59,8 @@ int main()
 
     int weights_size_bytes = filelen * sizeof(unsigned char);
     weights_buffer = (unsigned char *)malloc(weights_size_bytes); // Enough memory for file + \0
-    fread(weights_buffer, filelen, 1, fileptr);          // Read in the entire file
-    fclose(fileptr);                                     // Close the file
+    fread(weights_buffer, filelen, 1, fileptr);                   // Read in the entire file
+    fclose(fileptr);                                              // Close the file
     // assert(binary_content_check(filelen, weights_buffer) == 0);
     
 
@@ -75,8 +75,8 @@ int main()
 
     int input_size_bytes = filelen * sizeof(unsigned char);
     input_buffer = (unsigned char *)malloc(input_size_bytes); // Enough memory for file + \0
-    fread(input_buffer, filelen, 1, fileptr);        // Read in the entire file
-    fclose(fileptr);                                 // Close the file
+    fread(input_buffer, filelen, 1, fileptr);        	      // Read in the entire file
+    fclose(fileptr);                                 	      // Close the file
 
     // setup mem offset, size for input image dma_in and output feature map dma_out, payload 4 floats
     // 1st flit: higher 32 bits: offset in mem to dma_in
@@ -85,7 +85,7 @@ int main()
     //           lower  32 bits: size (bytes) in mem to dma_out
     // example: dma_in at offset 0x80000100, prepare to dma_in (input_size_bytes) bytes as input image
     // example: dma_out at offset 0x00f00000, prepare to dma_out (output_size_bytes) bytes as output feature map
-	// NOTE: ADRESS HERE NEEDS TO BE CONSISTENT WITH THE COMMAND ADDRESS FIELD
+    // NOTE: ADRESS HERE NEEDS TO BE CONSISTENT WITH THE COMMAND ADDRESS FIELD
     float transaction_3[4] = {(float)0x80000100, (float)input_size_bytes, (float)0x00f00000, output_size_bytes};
     // assert(binary_content_check(filelen, input_buffer) == 0);
 
@@ -114,22 +114,22 @@ int main()
     unsigned short int cmd_pool[cmd_pool_len] = {4, 4, 0, 0, 0, 0, 0, 0};
     unsigned int cmd_rsvd[cmd_rsvd_len] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    unsigned char *command_buffer;                    // DOUBLE CHECK
-    fileptr = fopen("BIN/command.bin", "rb"); // Open the file in binary mode
-    fseek(fileptr, 0, SEEK_END);              // Jump to the end of the file
-    filelen = ftell(fileptr);                 // Get the current byte offset in the file, filelen is 128 fixed
-    rewind(fileptr);                          // Jump back to the beginning of the file
+    unsigned char *command_buffer;                      // DOUBLE CHECK
+    fileptr = fopen("BIN/command.bin", "rb"); 		// Open the file in binary mode
+    fseek(fileptr, 0, SEEK_END);              		// Jump to the end of the file
+    filelen = ftell(fileptr);                 		// Get the current byte offset in the file, filelen is 128 fixed
+    rewind(fileptr);                          		// Jump back to the beginning of the file
 
-	// add 16 bytes to store the extra 3 float
+    // add 16 bytes to store the extra 3 float
     int command_size_bytes = (filelen + 8) * sizeof(unsigned char);
-    command_buffer = (unsigned char *)malloc(command_size_bytes); // Enough memory for file + \0
-    fread(command_buffer+4, filelen, 1, fileptr);           // Read in the entire file
-    fclose(fileptr);                                      // Close the file
+    command_buffer = (unsigned char *)malloc(command_size_bytes); 	// Enough memory for file + \0
+    fread(command_buffer+4, filelen, 1, fileptr);           		// Read in the entire file
+    fclose(fileptr);                                      		// Close the file
 
-	// assign number_commands at the start
-	for (int iter = 0; iter < 4; iter++) {
-		command_buffer[iter] = number_commands_byte[iter];
-	}
+    // assign number_commands at the start
+    for (int iter = 0; iter < 4; iter++) {
+	command_buffer[iter] = number_commands_byte[iter];
+    }
     //assert(binary_content_check(filelen + 12, command_buffer) == 0);
 	
 
@@ -142,19 +142,19 @@ int main()
     while (!MPI_Send(weights_buffer, weights_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
     while (!MPI_Send(transaction_3, input_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
     while (!MPI_Send(command_buffer, 33, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
-	while (!MPI_Send(transaction_5, 2, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
-	// Accumulated cycle count from rank 0 is 0
-	while (!MPI_Send((float)0, 1, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
-	// DMA in input feature map
-	while (!MPI_Send(input_buffer, input_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
-
-	// Wait for receive
-	float accumulated_cycle_count;
-	while (!MPI_Recv(&accumulated_cycle_count, 1, MPI_FLOAT, 0, 0 /*not used*/, MPI_COMM_WORLD /*not used*/));
-
-	unsigned char *final_output_bytes;
-	final_output_bytes = (unsigned char *)malloc(final_output_size_bytes);
-	while (!MPI_Recv(final_output_bytes, final_output_size_bytes, MPI_FLOAT, 0, 0 /*not used*/, MPI_COMM_WORLD /*not used*/));
+    while (!MPI_Send(transaction_5, 2, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+    // Accumulated cycle count from rank 0 is 0
+    while (!MPI_Send((float)0, 1, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+    // DMA in input feature map
+    while (!MPI_Send(input_buffer, input_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+    
+    // Wait for receiving
+    float accumulated_cycle_count;
+    while (!MPI_Recv(&accumulated_cycle_count, 1, MPI_FLOAT, 0, 0 /*not used*/, MPI_COMM_WORLD /*not used*/));
+    
+    unsigned char *final_output_bytes;
+    final_output_bytes = (unsigned char *)malloc(final_output_size_bytes);
+    while (!MPI_Recv(final_output_bytes, final_output_size_bytes, MPI_FLOAT, 0, 0 /*not used*/, MPI_COMM_WORLD /*not used*/));
 
 
     return 0;
