@@ -58,7 +58,7 @@ int main()
     rewind(fileptr);                                  // Jump back to the beginning of the file
 
     int weights_size_bytes = filelen * sizeof(unsigned char);
-    weights_buffer = (unsigned char *)malloc(weights_size_bytes); // Enough memory for file + \0
+    weights_buffer = (unsigned char *)malloc(weights_size_bytes); // Enough memory for file
     fread(weights_buffer, filelen, 1, fileptr);                   // Read in the entire file
     fclose(fileptr);                                              // Close the file
     // assert(binary_content_check(filelen, weights_buffer) == 0);
@@ -74,7 +74,7 @@ int main()
     rewind(fileptr);                                // Jump back to the beginning of the file
 
     int input_size_bytes = filelen * sizeof(unsigned char);
-    input_buffer = (unsigned char *)malloc(input_size_bytes); // Enough memory for file + \0
+    input_buffer = (unsigned char *)malloc(input_size_bytes); // Enough memory for file
     fread(input_buffer, filelen, 1, fileptr);        	      // Read in the entire file
     fclose(fileptr);                                 	      // Close the file
 
@@ -122,7 +122,7 @@ int main()
 
     // add 16 bytes to store the extra 3 float
     int command_size_bytes = (filelen + 8) * sizeof(unsigned char);
-    command_buffer = (unsigned char *)malloc(command_size_bytes); 	// Enough memory for file + \0
+    command_buffer = (unsigned char *)malloc(command_size_bytes); 	// Enough memory for file
     fread(command_buffer+4, filelen, 1, fileptr);           		// Read in the entire file
     fclose(fileptr);                                      		// Close the file
 
@@ -138,7 +138,7 @@ int main()
 
     // Transaction begins
     while (!MPI_Send(transaction_1, 2, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
-	// DMA in weights
+    // DMA in weights
     while (!MPI_Send(weights_buffer, weights_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
     while (!MPI_Send(transaction_3, input_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
     while (!MPI_Send(command_buffer, 33, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
