@@ -36,12 +36,6 @@ int binary_content_check(int filelen, unsigned char * buffer){
 
 int main()
 {
-
-    #pragma HLS resource core = AXI4Stream variable = stream_out
-    #pragma HLS resource core = AXI4Stream variable = stream_in
-    #pragma HLS DATA_PACK variable = stream_out
-    #pragma HLS DATA_PACK variable = stream_in 
-
     float output_size_bytes = 255;			// NEEDS TO BE UPDATED
 	int final_output_size_bytes = 255;		// NEED TO BE MODIFIED
     static int target_rank = 1;
