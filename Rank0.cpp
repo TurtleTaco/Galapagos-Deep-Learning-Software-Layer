@@ -111,11 +111,11 @@ int main()
     // Readin command from binary file into float array
     // For reference purposes
     const int cmd_conv_len = 12;
-	const int cmd_addr_len = 9;
-	const int cmd_mode_len = 2;
-	const int cmd_pool_len = 8;
-	const int cmd_rsvd_len = 12;
-	const int cmd_size_bytes = 128;
+    const int cmd_addr_len = 9;
+    const int cmd_mode_len = 2;
+    const int cmd_pool_len = 8;
+    const int cmd_rsvd_len = 12;
+    const int cmd_size_bytes = 128;
     unsigned short int cmd_conv[cmd_conv_len] = {6, 6, 3, 3, 1, 0, 4, 4, 1, 1, 1, 1};
     unsigned int cmd_addr[cmd_addr_len] = {2147483904, 36, 288, 0, 2148270080, 16, 2147491840, 72, 576};
     unsigned short int cmd_mode[cmd_mode_len] = {0, 0};
