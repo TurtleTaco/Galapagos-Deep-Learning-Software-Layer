@@ -6,8 +6,8 @@
 #include <fstream>
 #include <iomanip>
 
-// #include "MPI.h"
-// #include "ap_axi_sdata.h"
+#include "MPI.h"
+#include "ap_axi_sdata.h"
 
 using namespace std;
 
@@ -37,16 +37,20 @@ int binary_content_check(int filelen, unsigned char * buffer){
 int main()
 {
 
-    // #pragma HLS resource core = AXI4Stream variable = stream_out
-    // #pragma HLS resource core = AXI4Stream variable = stream_in
-    // #pragma HLS DATA_PACK variable = stream_out
-    // #pragma HLS DATA_PACK variable = stream_in
+    #pragma HLS resource core = AXI4Stream variable = stream_out
+    #pragma HLS resource core = AXI4Stream variable = stream_in
+    #pragma HLS DATA_PACK variable = stream_out
+    #pragma HLS DATA_PACK variable = stream_in 
 
-    int output_size_bytes = 255; // NEEDS TO BE UPDATED
+    float output_size_bytes = 255;			// NEEDS TO BE UPDATED
+	int final_output_size_bytes = 255;		// NEED TO BE MODIFIED
     static int target_rank = 1;
     float number_commands = 1;
+	unsigned char number_commands_byte[4] =  {0, 0, 0, 1 };
     float batch_size = 1;
+	unsigned char batch_size_byte[4] = { 0, 0, 0, 1 };
     float num_ranks = 1;
+	unsigned char num_ranks_byte[4] = { 0, 0, 0, 1 };
 
 
 
@@ -87,86 +91,76 @@ int main()
     //           lower  32 bits: size (bytes) in mem to dma_in
     // 2nd flit: higher 32 bits: offset in mem to dma_out
     //           lower  32 bits: size (bytes) in mem to dma_out
-    // example: dma_in at offset 0x00001000, prepare to dma_in 8 bytes as input image
-    //          payload: (hex) 0000000008
-    // example: dma_out at offset 0x00005000, prepare to dma_out 8 bytes as output feature map
-    //          payload: (hex) 00005000 00000008
-    float transaction_3[4] = {0x00005000, (float)input_size_bytes, 0x0000f000, float(output_size_bytes)};
+    // example: dma_in at offset 0x80000100, prepare to dma_in (input_size_bytes) bytes as input image
+    // example: dma_out at offset 0x00f00000, prepare to dma_out (output_size_bytes) bytes as output feature map
+	// NOTE: ADRESS HERE NEEDS TO BE CONSISTENT WITH THE COMMAND ADDRESS FIELD
+    float transaction_3[4] = {0x80000100, (float)input_size_bytes, 0x00f00000, output_size_bytes};
     // assert(binary_content_check(filelen, input_buffer) == 0);
 
 
 
     // Prepare data for 1st transaction
-    // higher  32 bits: size (bytes) in mem to dma_in
-    // lower 32 bits: offset in mem to dma_in
-    // example: dma_in at offset 0, prepare to dma_in 8 bytes
-    // data: (hex) 41000000 (float 8 in hex) 00000000
-    float transaction_1[2] = {(float)weights_size_bytes, 0.0}; // {size to dma in, offset}
+    // first  32 bits: offset in mem to dma_in
+    // second  32 bits: size (bytes) in mem to dma_in
+    // example: dma_in at offset 0x800C0000, prepare to dma_in (weights_size_bytes) bytes
+    float transaction_1[2] = {0x800C0000, (float)weights_size_bytes}; // {size to dma in, offset}
 
 
 
     // Prepare data for 4th transaction
     // Readin command from binary file into float array
     // For reference purposes
-    // int cmd_conv_len = 12;
-    // int cmd_addr_len = 9;
-    // int cmd_mode_len = 2;
-    // int cmd_pool_len = 8;
-    // int cmd_rsvd_len = 12;
-    // int cmd_size_bytes = 128;
-    // unsigned short int cmd_conv[cmd_conv_len] = {6, 6, 3, 3, 1, 0, 4, 4, 1, 1, 1, 1};
-    // unsigned int cmd_addr[cmd_addr_len] = {2147483904, 36, 288, 0, 2148270080, 16, 2147491840, 72, 576};
-    // unsigned short int cmd_mode[cmd_mode_len] = {0, 0};
-    // unsigned short int cmd_pool[cmd_pool_len] = {4, 4, 0, 0, 0, 0, 0, 0};
-    // unsigned int cmd_rsvd[cmd_rsvd_len] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    const int cmd_conv_len = 12;
+	const int cmd_addr_len = 9;
+	const int cmd_mode_len = 2;
+	const int cmd_pool_len = 8;
+	const int cmd_rsvd_len = 12;
+	const int cmd_size_bytes = 128;
+    unsigned short int cmd_conv[cmd_conv_len] = {6, 6, 3, 3, 1, 0, 4, 4, 1, 1, 1, 1};
+    unsigned int cmd_addr[cmd_addr_len] = {2147483904, 36, 288, 0, 2148270080, 16, 2147491840, 72, 576};
+    unsigned short int cmd_mode[cmd_mode_len] = {0, 0};
+    unsigned short int cmd_pool[cmd_pool_len] = {4, 4, 0, 0, 0, 0, 0, 0};
+    unsigned int cmd_rsvd[cmd_rsvd_len] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     unsigned char *command_buffer;                    // DOUBLE CHECK
     fileptr = fopen("BIN/command.bin", "rb"); // Open the file in binary mode
     fseek(fileptr, 0, SEEK_END);              // Jump to the end of the file
-    filelen = ftell(fileptr);                 // Get the current byte offset in the file
+    filelen = ftell(fileptr);                 // Get the current byte offset in the file, filelen is 128 fixed
     rewind(fileptr);                          // Jump back to the beginning of the file
 
-    int command_size_bytes = filelen * sizeof(unsigned char);
+	// add 16 bytes to store the extra 3 float
+    int command_size_bytes = (filelen + 12) * sizeof(unsigned char);
     command_buffer = (unsigned char *)malloc(command_size_bytes); // Enough memory for file + \0
-    fread(command_buffer, filelen, 1, fileptr);           // Read in the entire file
+    fread(command_buffer+4, filelen, 1, fileptr);           // Read in the entire file
     fclose(fileptr);                                      // Close the file
 
-    assert(binary_content_check(filelen, command_buffer) == 0);
-
-    float transaction_4[35];
-    transaction_4[0] = number_commands;
-    // Total size of command is 128 bytes = 32 floats
-    // combining 4 bytes in command.bin into float
-    // unsigned char current_float[4];
-    // int command_bin_iter = 0;
-    memcpy(&transaction_4[1], command_buffer, sizeof(command_buffer));
-    // for (int i = 0; i < 32; i++)
-    // {
-        // for (int j = 0; j < 4; j++){
-        //     current_float[j] = command_buffer[command_bin_iter + j];
-        // }
-        // command_bin_iter += 4;
-        // memcpy(&transaction_4[i+1], command_buffer, sizeof(command_buffer));
-        // printf("%d ", transaction_4[i + 1]);
-        // for (int j = 0; j < 4; j++){
-        //     printf("%d ", current_float[j]);
-        // }
-        // printf("\n");
-    // }
-    transaction_4[33] = batch_size;
-    transaction_4[34] = num_ranks;
-
-    for (int j = 0; j < 35; j++){
-        printf("%d ", (int)transaction_4[j]);
-    }
-
-
+	// assign number_commands at the start, batch_size and num_ranks at the end
+	for (int iter = 0; iter < 4; iter++) {
+		command_buffer[iter] = number_commands_byte[iter];
+		command_buffer[132 + iter] = batch_size_byte[iter];
+		command_buffer[136 + iter] = num_ranks_byte[iter];
+	}
+    //assert(binary_content_check(filelen + 12, command_buffer) == 0);
 
     // Transaction begins
-    // while (!MPI_Send(transaction_1, 2, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
-    // while (!MPI_Send(transaction_2, weights_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
-    // while (!MPI_Send(transaction_3, input_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
-    // while (!MPI_Send(transaction_4, 35, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+    while (!MPI_Send(transaction_1, 2, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+	// DMA in weights
+    while (!MPI_Send(weights_buffer, weights_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+    while (!MPI_Send(transaction_3, input_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+    while (!MPI_Send(command_buffer, 35, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+	// Accumulated cycle count from rank 0 is 0
+	while (!MPI_Send((float)0, 1, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+	// DMA in input feature map
+	while (!MPI_Send(input_buffer, input_size_bytes/4, MPI_FLOAT, target_rank, 0, MPI_COMM_WORLD));
+
+	// Wait for receive
+	float accumulated_cycle_count;
+	while (!MPI_Recv(&accumulated_cycle_count, 1, MPI_FLOAT, 0, 0 /*not used*/, MPI_COMM_WORLD /*not used*/));
+
+	unsigned char *final_output_bytes;
+	final_output_bytes = (unsigned char *)malloc(final_output_size_bytes);
+	while (!MPI_Recv(final_output_bytes, final_output_size_bytes, MPI_FLOAT, 0, 0 /*not used*/, MPI_COMM_WORLD /*not used*/));
+
 
     return 0;
 
